@@ -1,0 +1,289 @@
+<!DOCTYPE Html>
+<html>
+<head>
+	<meta/>
+</head>
+<body onload="startGame()">
+<canvas id="canvas" width="720" height="720" style="margin-left: 600px; border: 1px solid black ;"></canvas>
+<div style="width: 720px; margin-left: 600px; clear: left; font-family: monospace; font-weight: bold;">
+	<div>
+		<div id="timeDiv" style="display: inline-block;"></div>
+		<div id="scoreDiv" style="display: inline-block; margin-left: 100px"></div>
+		<div id="gameoverDiv" style="display: inline-block; margin-left: 100px"></div>
+	</div>
+	<br/>
+	<div id="debugTable" style="display: none; width: 100%; table-layout: fixed;">
+		<div style="display: table-row;">
+			<div style="display: table-cell;">frameCount</div>
+			<div id="frameCountDiv" style="display: table-cell;"></div>
+			<div style="display: table-cell;">baseTime</div>
+			<div id="baseTimeDiv" style="display: table-cell;"></div>
+			<div style="display: table-cell;">timeGain</div>
+			<div id="timeGainDiv" style="display: table-cell;"></div>
+		</div>
+		<div style="display: table-row;">
+			<div style="display: table-cell;">pieceCenter</div>
+			<div id="pieceCenterDiv" style="display: table-cell;"></div>
+			<div style="display: table-cell;">pieceSize</div>
+			<div id="pieceSizeDiv" style="display: table-cell;"></div>
+			<div style="display: table-cell;">pieceMoveBase</div>
+			<div id="pieceMoveBaseDiv" style="display: table-cell;"></div>
+		</div>
+		<div style="display: table-row;">
+			<div style="display: table-cell;">coinCenter</div>
+			<div id="coinCenterDiv" style="display: table-cell;"></div>
+			<div style="display: table-cell;">coinRadius</div>
+			<div id="coinRadiusDiv" style="display: table-cell;"></div>
+			<div style="display: table-cell;">collectReach</div>
+			<div id="collectReachDiv" style="display: table-cell;"></div>
+		</div>
+	</div>
+</div>
+
+<script>
+
+//Piece variables
+var pieceX;
+var pieceY;
+var pieceWidth = pieceHeight = 30;
+var	pieceCenterX = pieceCenterY = pieceTop = pieceBottom = pieceLeft = pieceRight = 0;
+var pieceColor = "black";
+var pieceMoveBase = 5;
+var collectReach = 13;
+
+//General variables
+var score;
+var time;
+var baseTime = 3000;
+var timeGain = 2000;
+var frameCount;
+var fps = 60;
+var gameLoop;
+var debugMode = false;
+
+//Coin variables
+var coinX;
+var coinY;
+var coinRadius = 10;
+var coinColor = "gold";
+var coinBorderColor = "darkGoldenRod";
+
+function startGame(){
+	initialize();
+	canvas = document.getElementById("canvas");
+	ctx = canvas.getContext("2d");
+	
+	//Grab debug divs 
+	timeDiv = document.getElementById("timeDiv");
+	scoreDiv = document.getElementById("scoreDiv");
+	baseTimeDiv = document.getElementById("baseTimeDiv");
+	timeGainDiv = document.getElementById("timeGainDiv");
+	frameCountDiv = document.getElementById("frameCountDiv");
+	pieceCenterDiv = document.getElementById("pieceCenterDiv");
+	coinCenterDiv = document.getElementById("coinCenterDiv");
+	pieceSizeDiv = document.getElementById("pieceSizeDiv");
+	coinRadiusDiv = document.getElementById("coinRadiusDiv");
+	pieceMoveBaseDiv = document.getElementById("pieceMoveBaseDiv");
+	collectReachDiv = document.getElementById("collectReachDiv");
+
+	//Get going
+	gameLoop = setInterval("drawFrame()", 1000 / fps);
+}
+
+function initialize(){
+	score = 0;
+	time = baseTime;
+	frameCount = 0;
+	pieceX = getRandomIntInclusive(pieceWidth, canvas.width - pieceWidth);
+	pieceY = getRandomIntInclusive(pieceHeight, canvas.height - pieceHeight);
+	coinX = getRandomIntInclusive(coinRadius, canvas.width - coinRadius);
+	coinY = getRandomIntInclusive(coinRadius, canvas.height - coinRadius);
+	document.getElementById("gameoverDiv").innerHTML = "";
+}
+
+function drawFrame(){
+	clockUpdate();
+	clearCanvas();
+	updatePiecePosition();
+	drawPiece();
+	checkCoin();
+	drawCoin();
+	drawScore();
+	drawTime();
+	if (debugMode){ fillDebugMenu(); };
+}
+
+function clockUpdate(){
+	frameCount++;
+	time -= (1000 / fps);
+	//This assumes we are getting a full 60fps
+	if (frameCount >= fps){
+		frameCount = 0;
+	}
+	if (time <= 0){
+		gameover(); 
+	}
+}
+
+function clearCanvas(){
+	ctx.fillStyle = "white";
+	ctx.fillRect(0, 0, canvas.width, canvas.height);
+}
+
+function updatePiecePosition(){
+	//Adjust xy first
+	if(left){ pieceX -= pieceMoveBase};
+	if(up){ pieceY -= pieceMoveBase};
+	if(right){ pieceX += pieceMoveBase};
+	if(down){ pieceY += pieceMoveBase};
+	
+	//Edge collision logic
+	if (pieceX < 0){
+		pieceX = 0;
+	};
+	if (pieceX + pieceWidth > canvas.width){
+		pieceX = canvas.width - pieceWidth;
+	}
+	if (pieceY < 0){
+		pieceY = 0;
+	};
+	if (pieceY + pieceHeight > canvas.height){
+		pieceY = canvas.height - pieceHeight;
+	}
+	
+	//Update piece vars
+	pieceCenterX = pieceX + (pieceWidth / 2);
+	pieceCenterY = pieceY + (pieceHeight / 2);
+}
+
+function drawPiece(){
+	ctx.fillStyle = pieceColor;
+	ctx.fillRect(pieceX, pieceY, pieceWidth, pieceHeight);
+}
+
+function checkCoin(){
+	//Check for collected
+	var coinCollected = (	//left coin edge
+							(pieceCenterX + collectReach > coinX - coinRadius) &&
+							//right coin edge
+							(pieceCenterX - collectReach < coinX + coinRadius) &&
+							//top coin edge
+							(pieceCenterY + collectReach > coinY - coinRadius) &&
+							//bottom coin edge
+							(pieceCenterY - collectReach < coinY + coinRadius) 							
+							)? true : false;
+	
+	//Get a new coin
+	if (coinCollected){
+		score++;
+		time += timeGain;
+		coinX = getRandomIntInclusive(coinRadius, canvas.width - coinRadius);
+		coinY = getRandomIntInclusive(coinRadius, canvas.height - coinRadius);
+	};
+	
+}
+
+function drawCoin(){
+	ctx.beginPath();
+	ctx.arc(coinX, coinY, coinRadius, 0, 2 * Math.PI);
+	ctx.fillStyle = coinColor;
+	ctx.fill();
+	ctx.strokeStyle = coinBorderColor;
+	ctx.stroke();
+}
+
+function drawScore(){
+	scoreDiv.innerHTML = "SCORE" + "&nbsp&nbsp&nbsp" + score;
+}
+
+function drawTime(){
+	timeDiv.innerHTML = "TIME" + "&nbsp&nbsp&nbsp" + (time / 1000).toFixed(3);
+}
+
+function drawGameover(){
+	document.getElementById("gameoverDiv").innerHTML = "GAMEOVER!&nbsp&nbsp&nbspPress [Spacebar] to play again.";
+}
+
+function gameover(){
+	time = 0;
+	drawTime();
+	drawScore();
+	drawGameover();
+	clearInterval(gameLoop);
+}
+
+function fillDebugMenu(){
+	frameCountDiv.innerHTML = frameCount;
+	baseTimeDiv.innerHTML = baseTime;
+	timeGainDiv.innerHTML = timeGain;
+	pieceCenterDiv.innerHTML = pieceCenterX + "|" + pieceCenterY;
+	coinCenterDiv.innerHTML = coinX + "|" + coinY;
+	pieceSizeDiv.innerHTML = pieceWidth;
+	coinRadiusDiv.innerHTML = coinRadius;
+	pieceMoveBaseDiv.innerHTML = pieceMoveBase;
+	collectReachDiv.innerHTML = collectReach;
+}
+
+function showDebugMenu(){
+	document.getElementById("debugTable").style.display = 'table';
+}
+
+function hideDebugMenu(){
+	document.getElementById("debugTable").style.display = 'none';
+}
+
+//Key listener logic
+var left = up = right = down = false;
+
+document.onkeydown = function(e){
+	//basic movement with arrow keys
+	if(e.keyCode == 37){ left = true};
+	if(e.keyCode == 38){ up = true};
+	if(e.keyCode == 39){ right = true};
+	if(e.keyCode == 40){ down = true};
+	
+	//[d] enters debug mode
+	if(e.keyCode == 68){
+		debugMode = debugMode ? false : true;
+		debugMode ? showDebugMenu() : hideDebugMenu();
+	};
+	
+	//space bar resets the game
+	if(e.keyCode == 32){
+		clearInterval(gameLoop);
+		startGame();
+	};
+	
+	//esc ends the game immediately
+	if(e.keyCode == 27){
+		gameover();
+	}
+}
+
+document.onkeyup = function(e){
+	if(e.keyCode == 37){ left = false};
+	if(e.keyCode == 38){ up = false};
+	if(e.keyCode == 39){ right = false};
+	if(e.keyCode == 40){ down = false};
+}
+
+//Random color
+
+
+//Border color
+function borderColor (){
+
+}
+
+//helper function
+function getRandomIntInclusive(min, max){
+  min = Math.ceil(min);
+  max = Math.floor(max);
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+
+
+</script>
+</body>
+</html>
