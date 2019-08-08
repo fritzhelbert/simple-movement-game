@@ -7,5 +7,5 @@ Move around and collect gold coins before the timer runs out. Each coin adds a b
 ## Controls
 Key | Function
 --- | ---
-[Arrow] | Move
+[Arrow Keys] | Move
 [Space] | Restart
