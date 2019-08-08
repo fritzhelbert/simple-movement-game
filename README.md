@@ -1,9 +1,11 @@
-## Simple Movement Game
+## simple_movement_game.html
 A single-page simple movement game using the Javascript canvas.
 
-## GOAL
+## Goal
 Move around and collect gold coins before the timer runs out. Each coin adds a bit more time.
 
-## CONTROLS
-Arrow keys => Move around
-Spacebar => Restart after game over
+## Controls
+Key | Function
+--- | ---
+[Arrow] | Move
+[Space] | Restart
